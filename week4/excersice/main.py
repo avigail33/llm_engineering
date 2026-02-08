@@ -1,19 +1,14 @@
 
-"""
-Calculator function to add two numbers.
+def sum(num1, num2):
+    """
+    Calculates the sum of two numbers.
 
-Parameters:
-    number1 (float): The first number to be added.
-    number2 (float): The second number to be added.
+    Args:
+        num1 (int or float): The first number.
+        num2 (int or float): The second number.
 
-Returns:
-    float: The sum of the two input numbers.
-"""
-
-def calculator(number1, number2):
-    # Check if both number1 and number2 are numeric
-    if not isinstance(number1, (int, float)) or not isinstance(number2, (int, float)):
-        raise TypeError("Both inputs must be numbers.")
-    
-    # Return the sum of the two input numbers
-    return number1 + number2
+    Returns:
+        int or float: The sum of num1 and num2.
+    """
+    # Return the result of adding the two input numbers
+    return num1 + num2
