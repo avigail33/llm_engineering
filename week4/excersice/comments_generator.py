@@ -11,7 +11,7 @@ from IPython.display import Markdown, display
 from consts import python_hard
 
 system_prompt = f"""
-You are a helpful assistant that can improve the code of the user.
+You are a helpful assistant that can improve the understanding of the user code.
 The user will provide you with a python code and you will need to add docstring / comments 
 to help others understand the code. Do not change the code logic, only add comments.
 Respond only with python code. Do not provide any explanation other than docstring / comments.
