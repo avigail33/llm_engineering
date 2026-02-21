@@ -26,6 +26,7 @@ collection = chroma.get_or_create_collection(collection_name)
 
 RETRIEVAL_K = 20
 FINAL_K = 10
+QUERIES_K = 3
 
 SYSTEM_PROMPT = """
 You are a knowledgeable, friendly assistant representing the company Insurellm.
@@ -87,7 +88,7 @@ def make_rag_messages(question, history, chunks):
 
 
 @retry(wait=wait)
-def rewrite_query(question, history=[]):
+def rewrite_query(question, history=[], rewritten_questions=[]):
     """Rewrite the user's question to be a more specific question that is more likely to surface relevant content in the Knowledge Base."""
     message = f"""
 You are in a conversation with a user, answering questions about the company Insurellm.
@@ -96,8 +97,11 @@ You are about to look up information in a Knowledge Base to answer the user's qu
 This is the history of your conversation so far with the user:
 {history}
 
-And this is the user's current question:
+This is the user's current question:
 {question}
+
+And write questions different from this: 
+f{"\n\n".join( f"{q}\n" for q in rewritten_questions)}
 
 Respond only with a short, refined question that you will use to search the Knowledge Base.
 It should be a VERY short specific question most likely to surface content. Focus on the question details.
@@ -107,13 +111,20 @@ IMPORTANT: Respond ONLY with the precise knowledgebase query, nothing else.
     return response.choices[0].message.content
 
 
-def merge_chunks(chunks, reranked):
-    merged = chunks[:]
-    existing = [chunk.page_content for chunk in chunks]
-    for chunk in reranked:
-        if chunk.page_content not in existing:
-            merged.append(chunk)
+def merge_chunks(chunks, reranked=[]):
+    # merged = chunks[:]
+    # existing = [chunk.page_content for chunk in chunks]
+    # for chunk in reranked:
+    #     if chunk.page_content not in existing:
+    #         merged.append(chunk)
+    # return merged
+    merged = []
+    for chunk_list in chunks:
+        for chunk in chunk_list:
+            if chunk not in merged:
+                merged.append(chunk) 
     return merged
+
 
 
 def fetch_context_unranked(question):
@@ -126,10 +137,22 @@ def fetch_context_unranked(question):
 
 
 def fetch_context(original_question):
-    rewritten_question = rewrite_query(original_question)
-    chunks1 = fetch_context_unranked(original_question)
-    chunks2 = fetch_context_unranked(rewritten_question)
-    chunks = merge_chunks(chunks1, chunks2)
+    # rewritten_question = rewrite_query(original_question)
+    # chunks1 = fetch_context_unranked(original_question)
+    # chunks2 = fetch_context_unranked(rewritten_question)
+    # chunks = merge_chunks(chunks1, chunks2)
+    # reranked = rerank(original_question, chunks)
+    # return reranked[:FINAL_K]
+    different_questions = [original_question]
+    different_chunks = [fetch_context_unranked(original_question)]
+    for i in range(QUERIES_K):
+        tempruary_question = rewrite_query(original_question, [], different_questions)
+        print(tempruary_question)
+        different_questions.append(tempruary_question)
+        different_chunks.append(fetch_context_unranked(tempruary_question))
+    print(different_chunks)
+    chunks = merge_chunks(different_chunks)
+    print(chunks)
     reranked = rerank(original_question, chunks)
     return reranked[:FINAL_K]
 
