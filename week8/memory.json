@@ -16,5 +16,32 @@
     },
     "estimate": 930.8824204895075,
     "discount": 225.88242048950747
+  },
+  {
+    "deal": {
+      "product_description": "Apple Watch Series 11 GPS 42mm \u2014 A 42mm GPS smartwatch with enhanced health tracking including new heart health and sleep features, hypertension notifications, and 5G connectivity. It offers up to about 24 hours of battery life and includes the Series 11 hardware (Model MEQT4LW/A) with the typical suite of Apple Watch sensors and fitness tracking capabilities in a compact aluminum case.",
+      "price": 299.0,
+      "url": "https://www.dealnews.com/products/Apple/Apple-Watch-Series-11-GPS-42-mm-Smartwatch/497617.html?iref=rss-c142"
+    },
+    "estimate": 371.8663894653321,
+    "discount": 72.86638946533208
+  },
+  {
+    "deal": {
+      "product_description": "Anker Solix C1000 is an 1,800W portable power station designed for RVs and outdoor use. It uses an LFP battery rated for 3,000 cycles and supports up to 600W solar input for fast recharging; it charges to 80% in 43 minutes and can fully recharge in under an hour. The unit provides 2,400W surge output across 11 ports, app monitoring via Bluetooth and Wi\u2011Fi, and comes with a 5\u2011year warranty for extended reliability.",
+      "price": 429.0,
+      "url": "https://www.dealnews.com/Anker-Solix-C1000-1-800-W-Portable-Power-Station-for-429-free-shipping/21815138.html?iref=rss-c142"
+    },
+    "estimate": 1140.2946367187499,
+    "discount": 711.2946367187499
+  },
+  {
+    "deal": {
+      "product_description": "Hisense 75U75QG is a 75-inch 4K UHD Mini LED ULED smart TV (2025 model) featuring Dolby Vision, HDR10, HDR10+ and HLG support for improved contrast and color. The large-screen set targets bright-room performance with Mini LED backlighting and includes smart TV functionality for streaming apps and network connectivity. Model number 75U75QG indicates a recent 2025 lineup with modern HDR compatibility.",
+      "price": 900.0,
+      "url": "https://www.dealnews.com/products/Hisense/Hisense-75-U75-QG-75-4-K-UHD-Mini-LED-ULED-Smart-TV-2025/497938.html?iref=rss-c142"
+    },
+    "estimate": 1117.368612854004,
+    "discount": 217.3686128540039
   }
 ]

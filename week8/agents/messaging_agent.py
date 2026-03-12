@@ -1,8 +1,8 @@
 import os
 from agents.deals import Opportunity
 from agents.agent import Agent
-from litellm import completion
 import requests
+from openai import OpenAI
 
 pushover_url = "https://api.pushover.net/1/messages.json"
 
@@ -10,7 +10,8 @@ pushover_url = "https://api.pushover.net/1/messages.json"
 class MessagingAgent(Agent):
     name = "Messaging Agent"
     color = Agent.WHITE
-    MODEL = "claude-sonnet-4-5"
+    # MODEL = "claude-sonnet-4-5"
+    MODEL = "gpt-4o-mini"
 
     def __init__(self):
         """
@@ -21,7 +22,8 @@ class MessagingAgent(Agent):
         self.log("Messaging Agent is initializing")
         self.pushover_user = os.getenv("PUSHOVER_USER", "your-pushover-user-if-not-using-env")
         self.pushover_token = os.getenv("PUSHOVER_TOKEN", "your-pushover-user-if-not-using-env")
-        self.log("Messaging Agent has initialized Pushover and Claude")
+        self.client = OpenAI()
+        self.log("Messaging Agent has initialized Pushover and GPT-4o-mini")
 
     def push(self, text):
         """
@@ -54,7 +56,7 @@ class MessagingAgent(Agent):
         user_prompt = "Please summarize this great deal in 2-3 sentences to be sent as an exciting push notification alerting the user about this deal.\n"
         user_prompt += f"Item Description: {description}\nOffered Price: {deal_price}\nEstimated true value: {estimated_true_value}"
         user_prompt += "\n\nRespond only with the 2-3 sentence message which will be used to alert & excite the user about this deal"
-        response = completion(
+        response = self.client.chat.completions.create(
             model=self.MODEL,
             messages=[
                 {"role": "user", "content": user_prompt},
@@ -66,7 +68,7 @@ class MessagingAgent(Agent):
         """
         Make an alert about the specified details
         """
-        self.log("Messaging Agent is using Claude to craft the message")
+        self.log("Messaging Agent is using GPT-4o-mini to craft the message")
         text = self.craft_message(description, deal_price, estimated_true_value)
         self.push(text[:200] + "... " + url)
         self.log("Messaging Agent has completed")

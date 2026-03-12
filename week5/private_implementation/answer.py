@@ -2,6 +2,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from chromadb import PersistentClient
 from litellm import completion
+import litellm
 from pydantic import BaseModel, Field
 from pathlib import Path
 from tenacity import retry, wait_exponential
@@ -27,6 +28,10 @@ collection = chroma.get_or_create_collection(collection_name)
 RETRIEVAL_K = 20
 FINAL_K = 10
 QUERIES_K = 3
+
+SUMMARY_K = 5
+TOP_SOURCES = 2
+CHUNKS_PER_SOURCE = 15
 
 SYSTEM_PROMPT = """
 You are a knowledgeable, friendly assistant representing the company Insurellm.
@@ -89,19 +94,20 @@ def make_rag_messages(question, history, chunks):
 
 @retry(wait=wait)
 def rewrite_query(question, history=[], rewritten_questions=[]):
-    """Rewrite the user's question to be a more specific question that is more likely to surface relevant content in the Knowledge Base."""
+    """Rewrite the user's question into a short, specific query that is most likely to surface relevant passages from the books Knowledge Base."""
+    previous = "\n".join(f"- {q}" for q in rewritten_questions) if rewritten_questions else "(none)"
     message = f"""
 You are in a conversation with a user, answering questions about the company Insurellm.
 You are about to look up information in a Knowledge Base to answer the user's question.
 
-This is the history of your conversation so far with the user:
+Conversation history:
 {history}
 
-This is the user's current question:
+User's current question:
 {question}
 
-And write questions different from this: 
-f{"\n\n".join( f"{q}\n" for q in rewritten_questions)}
+Previously generated search queries (do NOT repeat these exactly):
+{previous}
 
 Respond only with a short, refined question that you will use to search the Knowledge Base.
 It should be a VERY short specific question most likely to surface content. Focus on the question details.
@@ -111,13 +117,7 @@ IMPORTANT: Respond ONLY with the precise knowledgebase query, nothing else.
     return response.choices[0].message.content
 
 
-def merge_chunks(chunks, reranked=[]):
-    # merged = chunks[:]
-    # existing = [chunk.page_content for chunk in chunks]
-    # for chunk in reranked:
-    #     if chunk.page_content not in existing:
-    #         merged.append(chunk)
-    # return merged
+def merge_chunks(chunks):
     merged = []
     for chunk_list in chunks:
         for chunk in chunk_list:
@@ -136,18 +136,11 @@ def fetch_context_unranked(question):
     return chunks
 
 
-def fetch_context(original_question):
-    # rewritten_question = rewrite_query(original_question)
-    # chunks1 = fetch_context_unranked(original_question)
-    # chunks2 = fetch_context_unranked(rewritten_question)
-    # chunks = merge_chunks(chunks1, chunks2)
-    # reranked = rerank(original_question, chunks)
-    # return reranked[:FINAL_K]
+def fetch_context(original_question, history=[]):
     different_questions = [original_question]
     different_chunks = [fetch_context_unranked(original_question)]
     for i in range(QUERIES_K):
-        tempruary_question = rewrite_query(original_question, [], different_questions)
-        print(tempruary_question)
+        tempruary_question = rewrite_query(original_question, history, different_questions)
         different_questions.append(tempruary_question)
         different_chunks.append(fetch_context_unranked(tempruary_question))
     print(different_chunks)
@@ -155,6 +148,64 @@ def fetch_context(original_question):
     print(chunks)
     reranked = rerank(original_question, chunks)
     return reranked[:FINAL_K]
+
+def fetch_context_hierarchical(original_question, history=[]):
+    different_questions = [original_question]
+    for i in range(QUERIES_K):
+        tempruary_question = rewrite_query(original_question, history, different_questions)
+        different_questions.append(tempruary_question)
+        
+    all_summaries = []
+    for i in different_questions:
+        all_summaries.append(fetch_summaries_unranked(i))
+    summaries = merge_chunks(all_summaries)
+
+    top_sources = pick_top_sources_from_summaries(summaries, original_question)
+
+    all_chunks = []
+    for q in different_questions:
+        all_chunks.append(fetch_chunks_for_sources(q, top_sources))
+    chunks = merge_chunks(all_chunks)
+
+    reranked = rerank(original_question, chunks)
+    return reranked[:FINAL_K]
+
+def fetch_summaries_unranked(question):
+    query = openai.embeddings.create(model=embedding_model, input=[question]).data[0].embedding
+    results = collection.query(
+        query_embeddings=[query],
+        n_results=SUMMARY_K,
+        where={"level": "summary"},
+    )
+    summaries = []
+    for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
+        summaries.append(Result(page_content=doc, metadata=meta))
+    return summaries
+
+def pick_top_sources_from_summaries(summaries, question):
+    ranked_summaries = rerank(summaries, question)
+    sources = []
+    for s in ranked_summaries:
+        src = s.metadata.get("source")
+        if src and src not in sources:
+            sources.append(src)
+        if len(sources) >= TOP_SOURCES:
+            break
+    return sources
+
+
+def fetch_chunks_for_sources(question, sources):
+    query = openai.embeddings.create(model=embedding_model, input=[question]).data[0].embedding
+    chunks = []
+    for src in sources:
+        results = collection.query(
+            query_embeddings=[query],
+            n_results=CHUNKS_PER_SOURCE,
+            where={"level": "chunk", "source": src},
+        )
+        for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
+            chunks.append(Result(page_content=doc, metadata=meta))
+    return chunks
 
 
 @retry(wait=wait)
